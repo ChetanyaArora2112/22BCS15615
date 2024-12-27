@@ -1,0 +1,188 @@
+backend
+
+
+// server/routes/education.js
+const express = require('express');
+const router = express.Router();
+
+const tips = [
+    "Diversify your portfolio to minimize risks.",
+    "Avoid investing more than you can afford to lose.",
+    "Regularly rebalance your portfolio to maintain your investment strategy.",
+    "Keep track of transaction fees when buying and selling cryptocurrencies.",
+    "Stay informed about regulatory changes affecting the crypto market."
+];
+
+router.get('/tips', (req, res) => {
+    res.json(tips);
+});
+
+module.exports = router;
+
+
+
+
+
+// server/routes/analytics.js
+router.get('/predict/:symbol', async (req, res) => {
+    const { symbol } = req.params;
+
+    try {
+        const { data } = await axios.get(`https://api.coingecko.com/api/v3/coins/${symbol}/market_chart`, {
+            params: { vs_currency: 'usd', days: 30 },
+        });
+
+        const prices = data.prices.map((p) => p[1]); // Extract prices
+        const sma = prices.reduce((sum, price, _, { length }) => sum + price / length, 0);
+
+        res.json({
+            symbol,
+            sma,
+            message: `The 30-day average price for ${symbol.toUpperCase()} is approximately $${sma.toFixed(2)}.`,
+        });
+    } catch (error) {
+        console.error('Error fetching predictive analytics:', error);
+        res.status(500).json({ error: 'Failed to fetch predictive analytics' });
+    }
+});
+
+
+
+
+
+
+Frontend
+
+
+
+
+import React, { useState, useEffect } from 'react';
+import { fetchTips } from '../services/api';
+
+const Education = () => {
+    const [tips, setTips] = useState([]);
+
+    useEffect(() => {
+        const loadTips = async () => {
+            try {
+                const data = await fetchTips();
+                setTips(data);
+            } catch (error) {
+                console.error('Error loading educational tips:', error);
+            }
+        };
+        loadTips();
+    }, []);
+
+    return (
+        <div className="education">
+            <h2>Investment Tips</h2>
+            <ul>
+                {tips.map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
+export default Education;
+
+
+
+
+
+
+
+import React, { useState } from 'react';
+import { fetchPrediction } from '../services/api';
+
+const PredictiveAnalytics = () => {
+    const [symbol, setSymbol] = useState('');
+    const [prediction, setPrediction] = useState(null);
+
+    const handlePredict = async () => {
+        try {
+            const data = await fetchPrediction(symbol);
+            setPrediction(data);
+        } catch (error) {
+            console.error('Error fetching prediction:', error);
+        }
+    };
+
+    return (
+        <div className="predictive-analytics">
+            <h2>Predictive Analytics</h2>
+            <input
+                type="text"
+                placeholder="Enter cryptocurrency symbol (e.g., bitcoin)"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value)}
+            />
+            <button onClick={handlePredict}>Predict</button>
+            {prediction && (
+                <div>
+                    <h3>{prediction.message}</h3>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default PredictiveAnalytics;
+
+
+
+// server/routes/portfolio.js
+router.get('/transactions/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const portfolio = await Portfolio.findOne({ userId });
+        if (!portfolio) return res.status(404).json({ error: 'Portfolio not found' });
+
+        res.json(portfolio.transactions || []);
+    } catch (error) {
+        console.error('Error fetching transactions:', error);
+        res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React, { useEffect } from 'react';
+import { toast } from 'react-toastify';
+
+const Alerts = ({ notifications }) => {
+    useEffect(() => {
+        notifications.forEach((notification) => {
+            toast(notification.message, { type: notification.type });
+        });
+    }, [notifications]);
+
+    return <></>;
+};
+
+export default Alerts;
+
+
+
+
+
+
+
+
+

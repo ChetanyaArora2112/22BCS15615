@@ -1,0 +1,96 @@
+Backend
+
+// server/routes/portfolio.js
+const express = require('express');
+const Portfolio = require('../models/Portfolio');
+const axios = require('axios');
+
+const router = express.Router();
+
+router.get('/consolidated/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const portfolio = await Portfolio.findOne({ userId });
+        if (!portfolio) {
+            return res.status(404).json({ error: 'Portfolio not found' });
+        }
+
+        const symbols = portfolio.assets.map((asset) => asset.symbol).join(',');
+        const { data } = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
+            params: { ids: symbols, vs_currencies: 'usd' },
+        });
+
+        const holdings = portfolio.assets.map((asset) => {
+            const price = data[asset.symbol]?.usd || 0;
+            return {
+                symbol: asset.symbol,
+                amount: asset.amount,
+                currentPrice: price,
+                value: price * asset.amount,
+            };
+        });
+
+        const totalValue = holdings.reduce((sum, holding) => sum + holding.value, 0);
+
+        res.json({ holdings, totalValue });
+    } catch (error) {
+        console.error('Error fetching consolidated portfolio:', error);
+        res.status(500).json({ error: 'Failed to fetch consolidated portfolio' });
+    }
+});
+
+module.exports = router;
+
+
+
+
+
+Front-end
+
+
+
+
+
+
+
+
+
+
+import React, { useState, useEffect } from 'react';
+import { fetchPortfolioConsolidated } from '../services/api';
+
+const ConsolidatedPortfolio = ({ userId }) => {
+    const [portfolio, setPortfolio] = useState(null);
+
+    useEffect(() => {
+        const loadPortfolio = async () => {
+            try {
+                const data = await fetchPortfolioConsolidated(userId);
+                setPortfolio(data);
+            } catch (error) {
+                console.error('Error loading portfolio:', error);
+            }
+        };
+        loadPortfolio();
+    }, [userId]);
+
+    if (!portfolio) return <div>Loading...</div>;
+
+    return (
+        <div className="portfolio">
+            <h2>Consolidated Portfolio</h2>
+            <ul>
+                {portfolio.holdings.map((holding, index) => (
+                    <li key={index}>
+                        {holding.symbol.toUpperCase()}: {holding.amount} @ ${holding.currentPrice.toFixed(2)} each, Value: ${holding.value.toFixed(2)}
+                    </li>
+                ))}
+            </ul>
+            <h3>Total Value: ${portfolio.totalValue.toFixed(2)}</h3>
+        </div>
+    );
+};
+
+export default ConsolidatedPortfolio;
+

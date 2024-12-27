@@ -1,0 +1,72 @@
+Backend
+
+
+
+router.get('/risk/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const portfolio = await Portfolio.findOne({ userId });
+        if (!portfolio) return res.status(404).json({ error: 'Portfolio not found' });
+
+        const totalInvestment = portfolio.assets.reduce((sum, asset) => sum + asset.amount, 0);
+
+        const diversification = portfolio.assets.map((asset) => ({
+            symbol: asset.symbol,
+            percentage: ((asset.amount / totalInvestment) * 100).toFixed(2),
+        }));
+
+        const isDiversified = diversification.every((d) => d.percentage <= 50);
+
+        res.json({ diversification, isDiversified });
+    } catch (error) {
+        console.error('Error assessing risk:', error);
+        res.status(500).json({ error: 'Failed to assess risk' });
+    }
+});
+
+
+
+
+
+
+Frontend
+
+
+
+import React, { useState, useEffect } from 'react';
+import { fetchRiskAssessment } from '../services/api';
+
+const RiskManagement = ({ userId }) => {
+    const [risk, setRisk] = useState(null);
+
+    useEffect(() => {
+        const loadRisk = async () => {
+            try {
+                const data = await fetchRiskAssessment(userId);
+                setRisk(data);
+            } catch (error) {
+                console.error('Error loading risk assessment:', error);
+            }
+        };
+        loadRisk();
+    }, [userId]);
+
+    if (!risk) return <div>Loading...</div>;
+
+    return (
+        <div className="risk-management">
+            <h2>Risk Management</h2>
+            <ul>
+                {risk.diversification.map((d, index) => (
+                    <li key={index}>
+                        {d.symbol.toUpperCase()}: {d.percentage}% of portfolio
+                    </li>
+                ))}
+            </ul>
+            <h3>{risk.isDiversified ? 'Your portfolio is well-diversified.' : 'Consider diversifying your portfolio.'}</h3>
+        </div>
+    );
+};
+
+export default RiskManagement;

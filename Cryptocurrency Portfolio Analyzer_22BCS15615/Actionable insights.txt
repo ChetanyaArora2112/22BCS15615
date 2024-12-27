@@ -1,0 +1,73 @@
+Backend
+
+// server/routes/crypto.js
+router.get('/market-trends', async (req, res) => {
+    try {
+        const { data } = await axios.get('https://api.coingecko.com/api/v3/coins/markets', {
+            params: {
+                vs_currency: 'usd',
+                order: 'market_cap_desc',
+                per_page: 5,
+                page: 1,
+                sparkline: true,
+            },
+        });
+
+        res.json(data.map((coin) => ({
+            name: coin.name,
+            symbol: coin.symbol,
+            currentPrice: coin.current_price,
+            priceChange24h: coin.price_change_percentage_24h,
+            trend: coin.sparkline_in_7d.price,
+        })));
+    } catch (error) {
+        console.error('Error fetching market trends:', error);
+        res.status(500).json({ error: 'Failed to fetch market trends' });
+    }
+});
+
+module.exports = router;
+
+
+
+
+Frontend
+
+
+
+
+
+import React, { useState, useEffect } from 'react';
+import { fetchMarketTrends } from '../services/api';
+
+const MarketTrends = () => {
+    const [trends, setTrends] = useState([]);
+
+    useEffect(() => {
+        const loadTrends = async () => {
+            try {
+                const data = await fetchMarketTrends();
+                setTrends(data);
+            } catch (error) {
+                console.error('Error loading market trends:', error);
+            }
+        };
+        loadTrends();
+    }, []);
+
+    return (
+        <div className="market-trends">
+            <h2>Market Trends</h2>
+            <ul>
+                {trends.map((trend, index) => (
+                    <li key={index}>
+                        <strong>{trend.name}</strong> ({trend.symbol.toUpperCase()}): ${trend.currentPrice.toFixed(2)} ({trend.priceChange24h.toFixed(2)}% 24h)
+                        {/* Render a sparkline chart for trend.sparkline here */}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
+export default MarketTrends;
